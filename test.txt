@@ -1,2 +1,4 @@
-j'aime les pates
-ou pas enfait
+feat: (rajouter un fichier)
+fit: (modifier un fichier) 
+
+fit!: (! = important)
