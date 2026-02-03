@@ -7,44 +7,22 @@ from sklearn.metrics import classification_report
 
 
 # =========================
-# 1. CHARGEMENT DU DATASET
+# CONFIG
 # =========================
 
-texts = []
-stars = []
-buffer = ""
-
-with open("../data/yelp_academic_reviews4students.jsonl", "r", encoding="utf-8", errors="ignore") as f:
-    for line in f:
-        buffer += line.strip()
-
-        # Une entrée complète se termine par }
-        if buffer.endswith("}"):
-            try:
-                star_match = re.search(r"stars:(\d)", buffer)
-                text_match = re.search(r'"text:""(.*?)"""', buffer)
-
-                if star_match and text_match:
-                    stars.append(int(star_match.group(1)))
-                    texts.append(text_match.group(1))
-
-            except:
-                pass
-
-            buffer = ""
-
-df = pd.DataFrame({
-    "text": texts,
-    "stars": stars
-})
-
-print(df.head())
-print("Nb lignes:", len(df))
-print(df["stars"].value_counts())
+FILES = {
+    "tout": "../data/yelp_academic_reviews4students.jsonl",
+    "restaurant": "../data/restaurant.jsonl",
+    "garage": "../data/garage.jsonl",
+    "hotel": "../data/hotel.jsonl",
+    "cafe": "../data/cafe.jsonl",
+    "bar": "../data/bar.jsonl",
+    "shopping": "../data/shopping.jsonl"
+}
 
 
 # =========================
-# 2. NETTOYAGE DU TEXTE
+# FONCTIONS UTILES
 # =========================
 
 def clean_text(text):
@@ -54,93 +32,93 @@ def clean_text(text):
     text = re.sub(r"\s+", " ", text)
     return text.strip()
 
-print("Nettoyage du texte...")
-df["clean_text"] = df["text"].apply(clean_text)
+
+def load_dataset(path):
+    texts, stars = [], []
+    buffer = ""
+
+    with open(path, "r", encoding="utf-8", errors="ignore") as f:
+        for line in f:
+            buffer += line.strip()
+
+            if buffer.endswith("}"):
+                star_match = re.search(r"stars:(\d)", buffer)
+                text_match = re.search(r'"text:""(.*?)"""', buffer)
+
+                if star_match and text_match:
+                    stars.append(int(star_match.group(1)))
+                    texts.append(text_match.group(1))
+
+                buffer = ""
+
+    return pd.DataFrame({"text": texts, "stars": stars})
 
 
 # =========================
-# 3. REDUCTION (OPTIONNEL)
-# =========================
-# Accélère énormément l'entraînement tout en gardant de très bons résultats
-
-#df = df.sample(200000, random_state=42)
-
-print("Dataset réduit:", len(df))
-
-
-# =========================
-# 4. TRAIN / TEST SPLIT
+# BOUCLE PRINCIPALE
 # =========================
 
-X_train, X_test, y_train, y_test = train_test_split(
-    df["clean_text"],
-    df["stars"],
-    test_size=0.2,
-    random_state=42,
-    stratify=df["stars"]
-)
+for etablissement, filepath in FILES.items():
 
+    print(f"\n=============================")
+    print(f" MODELE POUR : {etablissement.upper()}")
+    print(f"=============================")
 
-# =========================
-# 5. TF-IDF
-# =========================
+    # 1. Chargement
+    df = load_dataset(filepath)
+    print("Nb lignes :", len(df))
+    print(df["stars"].value_counts())
 
-vectorizer = TfidfVectorizer(
-    max_features=1000000,
-    ngram_range=(1, 2),
-    stop_words="english"
-)
+    # 2. Nettoyage
+    df["clean_text"] = df["text"].apply(clean_text)
 
-print("Vectorisation TF-IDF...")
-X_train_vec = vectorizer.fit_transform(X_train)
-X_test_vec = vectorizer.transform(X_test)
+    # (optionnel) réduire pour aller plus vite
+    # df = df.sample(200000, random_state=42)
 
+    # 3. Split
+    X_train, X_test, y_train, y_test = train_test_split(
+        df["clean_text"],
+        df["stars"],
+        test_size=0.2,
+        random_state=42,
+        stratify=df["stars"]
+    )
 
-# =========================
-# 6. MODELE
-# =========================
+    # 4. TF-IDF (UN par type)
+    vectorizer = TfidfVectorizer(
+        max_features=200000,
+        ngram_range=(1, 2),
+        stop_words="english"
+    )
 
-model = LogisticRegression(
-    max_iter=1000,
-    class_weight="balanced",
-    n_jobs=-1
-)
+    X_train_vec = vectorizer.fit_transform(X_train)
+    X_test_vec = vectorizer.transform(X_test)
 
-print("Entraînement du modèle...")
-model.fit(X_train_vec, y_train)
+    # 5. Modèle
+    model = LogisticRegression(
+        max_iter=1000,
+        class_weight="balanced",
+        n_jobs=-1
+    )
 
+    model.fit(X_train_vec, y_train)
 
-# =========================
-# 7. EVALUATION
-# =========================
+    # 6. Évaluation
+    y_pred = model.predict(X_test_vec)
 
-y_pred = model.predict(X_test_vec)
+    print("\n--- RESULTATS ---")
+    print(classification_report(y_test, y_pred))
 
-print("\n--- RESULTATS ---")
-print(classification_report(y_test, y_pred))
+    accuracy = (y_test == y_pred).mean()
+    print(f"Accuracy : {accuracy:.4f}")
 
+    # 7. Sauvegarde prédictions
+    df_pred = pd.DataFrame({
+        "true_stars": y_test.values,
+        "predicted_stars": y_pred
+    })
 
-# =========================
-# 8. PREDICTION FINALE
-# =========================
+    output_file = f"predictions_{etablissement}.csv"
+    df_pred.to_csv(output_file, index=False)
 
-def predict_note(text):
-    text = clean_text(text)
-    vec = vectorizer.transform([text])
-    return model.predict(vec)[0]
-
-
-print("\n--- TEST PREDICTION ---")
-print("Note prédite :", predict_note(
-    "the food was excellent and the staff were super friendly"
-))
-
-
-df_pred = pd.DataFrame(y_pred, columns=['stars'])
-df_pred.to_csv('predictions_stars.csv', index=False)
-print("\nRésultats sauvegardés dans 'predictions_stars.csv'")
-print("\nPremières 10 prédictions :")
-print(df_pred.head(10))
-
-accuracy = (y_test == y_pred).mean()
-print(f"\nExactitude globale du modèle: {accuracy:.4f}")
+    print(f"Fichier sauvegardé : {output_file}")
