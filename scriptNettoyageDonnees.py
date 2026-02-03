@@ -2,18 +2,21 @@ import json
 import os
 import re
 import unicodedata
+from dotenv import load_dotenv
 
 # ----------------------------
 # CONFIG
 # ----------------------------
-INPUT_REVIEWS = "yelp_academic_reviews4students.jsonl"
-INPUT_BUSINESS = "yelp_academic_dataset_business.json"
-OUTPUT_DIR = "donneesTraiter"
+load_dotenv()
 
-OUTPUT_REVIEWS = os.path.join(OUTPUT_DIR, "reviews_clean.jsonl")
-OUTPUT_BUSINESS = os.path.join(OUTPUT_DIR, "business_clean.json")
+FICHIER_AVIS = os.getenv("INPUT_REVIEWS")
+FICHIER_BUSINESS = os.getenv("INPUT_BUSINESS")
+FICHIER_SORTIE = os.getenv("OUTPUT_FILE")
 
-os.makedirs(OUTPUT_DIR, exist_ok=True)
+OUTPUT_REVIEWS = os.path.join(FICHIER_SORTIE, "reviews_clean.jsonl")
+OUTPUT_BUSINESS = os.path.join(FICHIER_SORTIE, "business_clean.json")
+
+os.makedirs(FICHIER_SORTIE, exist_ok=True)
 
 # ----------------------------
 # UTILS
@@ -43,7 +46,7 @@ def clean_reviews():
     kept = 0
     removed = 0
 
-    with open(INPUT_REVIEWS, "r", encoding="utf-8") as fin, \
+    with open(FICHIER_AVIS, "r", encoding="utf-8") as fin, \
          open(OUTPUT_REVIEWS, "w", encoding="utf-8") as fout:
 
         for line in fin:
@@ -77,11 +80,16 @@ def clean_reviews():
 # ----------------------------
 def clean_business():
     kept = 0
+    removed = 0
 
-    with open(INPUT_BUSINESS, "r", encoding="utf-8") as fin, \
+    with open(FICHIER_BUSINESS, "r", encoding="utf-8") as fin, \
          open(OUTPUT_BUSINESS, "w", encoding="utf-8") as fout:
 
         for line in fin:
+            if not line.strip():
+                removed += 1
+                continue
+
             business = json.loads(line)
 
             business["name"] = clean_text(business.get("name", ""))
@@ -91,12 +99,10 @@ def clean_business():
             fout.write(json.dumps(business, ensure_ascii=False) + "\n")
             kept += 1
 
-    print(f"✔ Entreprises nettoyées : {kept}")
+    print(f"✔ Entreprises conservées : {kept}")
+    print(f"✘ Entreprises supprimées : {removed}")
 
-
-# ----------------------------
-# MAIN
-# ----------------------------
+# ---------------------------- # MAIN # ---------------------------- # 
 if __name__ == "__main__":
     print("Nettoyage des avis...")
     clean_reviews()
