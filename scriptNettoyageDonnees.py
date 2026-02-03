@@ -9,14 +9,14 @@ from dotenv import load_dotenv
 # ----------------------------
 load_dotenv()
 
-FICHIER_AVIS = os.getenv("INPUT_REVIEWS")
-FICHIER_BUSINESS = os.getenv("INPUT_BUSINESS")
-FICHIER_SORTIE = os.getenv("OUTPUT_FILE")
+FICHIER_ENTREE = os.getenv("OUTPUT_FILE")    # donneesMerch.jsonl
+FICHIER_SORTIE = os.getenv("OUTPUT_FILE2")   # donneesTraiter.jsonl
 
-OUTPUT_REVIEWS = os.path.join(FICHIER_SORTIE, "reviews_clean.jsonl")
-OUTPUT_BUSINESS = os.path.join(FICHIER_SORTIE, "business_clean.json")
+if not FICHIER_ENTREE or not FICHIER_SORTIE:
+    raise ValueError("❌ OUTPUT_FILE ou OUTPUT_FILE2 manquant dans le .env")
 
-os.makedirs(FICHIER_SORTIE, exist_ok=True)
+# Créer le dossier de sortie si besoin
+os.makedirs(os.path.dirname(FICHIER_SORTIE), exist_ok=True)
 
 # ----------------------------
 # UTILS
@@ -25,89 +25,69 @@ def clean_text(text):
     if not text:
         return ""
 
-    # Normalisation unicode (accents)
     text = unicodedata.normalize("NFKD", text)
     text = text.encode("ascii", "ignore").decode("ascii")
-
-    # Suppression des emojis et caractères spéciaux
     text = re.sub(r"[^a-zA-Z0-9\s.,!?']", " ", text)
-
-    # Suppression espaces multiples
     text = re.sub(r"\s+", " ", text).strip()
-
     return text.lower()
 
-
 # ----------------------------
-# CLEAN REVIEWS
+# CLEAN MERGED DATA
 # ----------------------------
-def clean_reviews():
+def clean_merged_file():
     seen_texts = set()
     kept = 0
     removed = 0
 
-    with open(FICHIER_AVIS, "r", encoding="utf-8") as fin, \
-         open(OUTPUT_REVIEWS, "w", encoding="utf-8") as fout:
-
-        for line in fin:
-            review = json.loads(line)
-
-            raw_text = review.get("text", "")
-            cleaned_text = clean_text(raw_text)
-
-            # Supprimer avis vides
-            if cleaned_text == "":
-                removed += 1
-                continue
-
-            # Supprimer doublons
-            if cleaned_text in seen_texts:
-                removed += 1
-                continue
-
-            seen_texts.add(cleaned_text)
-            review["text"] = cleaned_text
-
-            fout.write(json.dumps(review, ensure_ascii=False) + "\n")
-            kept += 1
-
-    print(f"✔ Avis conservés : {kept}")
-    print(f"✘ Avis supprimés : {removed}")
-
-
-# ----------------------------
-# CLEAN BUSINESS
-# ----------------------------
-def clean_business():
-    kept = 0
-    removed = 0
-
-    with open(FICHIER_BUSINESS, "r", encoding="utf-8") as fin, \
-         open(OUTPUT_BUSINESS, "w", encoding="utf-8") as fout:
+    with open(FICHIER_ENTREE, "r", encoding="utf-8") as fin, \
+         open(FICHIER_SORTIE, "w", encoding="utf-8") as fout:
 
         for line in fin:
             if not line.strip():
                 removed += 1
                 continue
 
-            business = json.loads(line)
+            obj = json.loads(line)
 
-            business["name"] = clean_text(business.get("name", ""))
-            business["city"] = clean_text(business.get("city", ""))
-            business["categories"] = clean_text(business.get("categories", ""))
+            # Nettoyage des champs texte s'ils existent
+            if "text" in obj:
+                obj["text"] = clean_text(obj.get("text", ""))
 
-            fout.write(json.dumps(business, ensure_ascii=False) + "\n")
+            if "name" in obj:
+                obj["name"] = clean_text(obj.get("name", ""))
+
+            if "city" in obj:
+                obj["city"] = clean_text(obj.get("city", ""))
+
+            if "categories" in obj:
+                obj["categories"] = clean_text(obj.get("categories", ""))
+
+            # Si le texte est vide après nettoyage → on jette
+            if "text" in obj and obj["text"] == "":
+                removed += 1
+                continue
+
+            # Suppression des doublons sur le texte
+            if "text" in obj:
+                if obj["text"] in seen_texts:
+                    removed += 1
+                    continue
+                seen_texts.add(obj["text"])
+
+            fout.write(json.dumps(obj, ensure_ascii=False) + "\n")
             kept += 1
 
-    print(f"✔ Entreprises conservées : {kept}")
-    print(f"✘ Entreprises supprimées : {removed}")
+    print(f"✔ Lignes conservées : {kept}")
+    print(f"✘ Lignes supprimées : {removed}")
+    print(f"✅ Fichier nettoyé écrit dans : {FICHIER_SORTIE}")
 
-# ---------------------------- # MAIN # ---------------------------- # 
+# ----------------------------
+# MAIN
+# ----------------------------
 if __name__ == "__main__":
-    print("Nettoyage des avis...")
-    clean_reviews()
+    print("🧹 Nettoyage du fichier fusionné...")
+    print(f"📥 Entrée : {FICHIER_ENTREE}")
+    print(f"📤 Sortie : {FICHIER_SORTIE}")
+    print("-" * 40)
 
-    print("\nNettoyage des entreprises...")
-    clean_business()
-
-    print("\n✅ Données nettoyées dans le dossier 'donneesTraiter'")
+    clean_merged_file()
