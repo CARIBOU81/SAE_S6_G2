@@ -1,6 +1,9 @@
 import json
 import os
 from collections import defaultdict
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Fichiers d'entrée et sortie depuis les variables d'environnement
 FICHIER_ENTREE = os.getenv("OUTPUT_FILE2")   # ex: donneesTraiter.jsonl
@@ -17,7 +20,7 @@ DOSSIER_SCRIPT = os.path.dirname(os.path.abspath(__file__))
 FICHIER_CATEGORIES = os.path.join(DOSSIER_SCRIPT, "toutesLesCateg.txt")
 
 # Familles à conserver
-# J'ai garder les 10 familles les plus présentes 
+# J'ai garder les 10 familles les plus présentes
 familles_a_garder = {
     "Restauration",
     "Bars & Vie nocturne",
