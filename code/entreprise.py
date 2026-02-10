@@ -40,7 +40,7 @@ print(f"   -> {len(df_business)} entreprises chargées en mémoire.")
 
 print("2. Chargement et fusion des avis (Patience...)...")
 
-# Astuce : Si votre fichier d'avis est GIGANTESQUE (plusieurs Go), 
+# Astuce : Si votre fichier d'avis est GIGANTESQUE (plusieurs Go),
 # on le charge par morceaux ("chunks") pour ne pas saturer l'ordi.
 chunk_size = 100000
 chunks = []
@@ -50,13 +50,13 @@ reader = pd.read_json(FICHIER_AVIS, lines=True, chunksize=chunk_size)
 
 for i, chunk in enumerate(reader):
     print(f"   Traitement du bloc n°{i+1}...")
-    
+
     # C'est ici que la magie opère : on colle les infos business sur les avis
     chunk_merged = pd.merge(chunk, df_business, on='business_id', how='left')
-    
+
     # On remplit les vides si une entreprise n'est pas trouvée
     chunk_merged['categories'] = chunk_merged['categories'].fillna('Inconnu')
-    
+
     # On ajoute ce bloc traité à la liste (ou on pourrait écrire direct dans le fichier)
     chunks.append(chunk_merged)
 
