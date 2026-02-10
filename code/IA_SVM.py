@@ -1,3 +1,4 @@
+import json
 import re
 import pandas as pd
 from sklearn import svm
@@ -19,14 +20,14 @@ FICHIER_BUSINESS = os.getenv("INPUT_BUSINESS")
 FICHIER_SORTIE = os.getenv("OUTPUT_FILE")
 
 FILES = {
-    "tout": "../data/yelp_academic_reviews4students.jsonl",
-    "restaurant": "../data/restaurant.jsonl",
-    "garage": "../data/garage.jsonl",
-    "hotel": "../data/hotel.jsonl",
-    "cafe": "../data/cafe.jsonl",
-    "bar": "../data/bar.jsonl",
-    "shopping": "../data/shopping.jsonl"
+    "tout": FICHIER_AVIS,
+    "Health_Medical": os.getenv("HEALTH_MEDICAL"),
+    "Hotels": os.getenv("HOTELS"),
+    "Restaurants": os.getenv("RESTAURANTS"),
+    "Shopping": os.getenv("SHOPPING"),
 }
+
+print("Fichiers utilisés :", FILES)
 
 
 # =========================
@@ -42,24 +43,28 @@ def clean_text(text):
 
 
 def load_dataset(path):
-    texts, stars = [], []
-    buffer = ""
+    data = []
 
-    with open(path, "r", encoding="utf-8", errors="ignore") as f:
+    # Vérification simple si le fichier existe
+    if not path or not os.path.exists(path):
+        print(f"⚠️ Fichier introuvable : {path}")
+        return pd.DataFrame(columns=["text", "stars"])
+
+    with open(path, "r", encoding="utf-8") as f:
         for line in f:
-            buffer += line.strip()
+            try:
+                # La magie opère ici : json.loads comprend automatiquement le format
+                review = json.loads(line)
 
-            if buffer.endswith("}"):
-                star_match = re.search(r"stars:(\d)", buffer)
-                text_match = re.search(r'"text:""(.*?)"""', buffer)
+                # On extrait proprement
+                data.append({
+                    "text": review.get("text", ""), # .get évite le crash si la clé manque
+                    "stars": review.get("stars", 0)
+                })
+            except json.JSONDecodeError:
+                continue # On saute juste la ligne si elle est illisible
 
-                if star_match and text_match:
-                    stars.append(int(star_match.group(1)))
-                    texts.append(text_match.group(1))
-
-                buffer = ""
-
-    return pd.DataFrame({"text": texts, "stars": stars})
+    return pd.DataFrame(data)
 
 
 # =========================
@@ -81,7 +86,7 @@ for etablissement, filepath in FILES.items():
     df["clean_text"] = df["text"].apply(clean_text)
 
     # (optionnel) réduire pour aller plus vite
-    # df = df.sample(200000, random_state=42)
+    df = df.sample(200000, random_state=42)
 
     # 3. Split
     X_train, X_test, y_train, y_test = train_test_split(
