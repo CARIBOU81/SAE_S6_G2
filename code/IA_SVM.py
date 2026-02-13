@@ -8,6 +8,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import classification_report
 import os
 from dotenv import load_dotenv
+from pathlib import Path
 
 # =========================
 # CONFIG
@@ -19,13 +20,19 @@ FICHIER_AVIS = os.getenv("INPUT_REVIEWS")
 FICHIER_BUSINESS = os.getenv("INPUT_BUSINESS")
 FICHIER_SORTIE = os.getenv("OUTPUT_FILE")
 
-FILES = {
-    "tout": FICHIER_AVIS,
-    "Health_Medical": os.getenv("HEALTH_MEDICAL"),
-    "Hotels": os.getenv("HOTELS"),
-    "Restaurants": os.getenv("RESTAURANTS"),
-    "Shopping": os.getenv("SHOPPING"),
-}
+# 1. Définit le chemin du dossier (via variable d'env ou chemin en dur)
+dossier_data = os.getenv("OUTPUT_FILE3")
+path = Path(dossier_data)
+
+FILES = {}
+
+# 2. Vérifie que le dossier existe
+if path.exists():
+    # 3. Récupère tous les fichiers .json
+    for file_path in path.glob("*.jsonl"):
+        # file_path.stem = nom du fichier sans .json (ex: "Hotels.json" -> "Hotels")
+        # str(file_path) = le chemin complet
+        FILES[file_path.stem] = str(file_path)
 
 print("Fichiers utilisés :", FILES)
 
