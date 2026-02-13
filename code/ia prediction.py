@@ -14,7 +14,6 @@ import os
 # =========================
 load_dotenv()
 
-
 FICHIER_REVIEWS = os.getenv("INPUT_REVIEWS")
 FICHIER_SORTIE = os.getenv("OUTPUT_FILE_prediction") # dossier ou serra les resultats
 
@@ -44,18 +43,21 @@ def clean_text(text):
     return text.strip()
 
 
-import json
+
+
 
 def load_dataset(path):
-    texts, stars = [], []
+    data = pd.read_json(path, lines=True, encoding="utf-8", encoding_errors="ignore")
 
-    with open(path, "r", encoding="utf-8") as f:
-        for line in f:
-            obj = json.loads(line)
-            texts.append(obj["text"])
-            stars.append(obj["stars"])
+    df = pd.DataFrame({
+        "texte": data["text"],
+        "stars": data["stars"]
+    })
 
-    return pd.DataFrame({"text": texts, "stars": stars})
+    print(f"✓ Données chargées : {len(df)} lignes")
+    print(df["stars"].value_counts().sort_index())
+
+    return df
 
 
 
@@ -75,10 +77,10 @@ for etablissement, filepath in FILES.items():
     print(df["stars"].value_counts())
 
     # 2. Nettoyage
-    df["clean_text"] = df["text"].apply(clean_text)
+    df["clean_text"] = df["texte"].apply(clean_text)
 
     # (optionnel) réduire pour aller plus vite
-    # df = df.sample(200000, random_state=42)
+    df = df.sample(200000, random_state=42)
 
     # 3. Split
     X_train, X_test, y_train, y_test = train_test_split(
