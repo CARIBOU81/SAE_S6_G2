@@ -11,13 +11,8 @@ from sklearn.metrics import classification_report
 # =========================
 
 FILES = {
-    "tout": "../data/yelp_academic_reviews4students.jsonl",
-    "restaurant": "../data/restaurant.jsonl",
-    "garage": "../data/garage.jsonl",
-    "hotel": "../data/hotel.jsonl",
-    "cafe": "../data/cafe.jsonl",
-    "bar": "../data/bar.jsonl",
-    "shopping": "../data/shopping.jsonl"
+    "tout": "C:/Users/louan/OneDrive/Documents/but-info/S6/SAE/SAE_S6_G2/data/yelp_academic_reviews4students.jsonl",
+    
 }
 
 
@@ -33,25 +28,20 @@ def clean_text(text):
     return text.strip()
 
 
+
+
 def load_dataset(path):
-    texts, stars = [], []
-    buffer = ""
+    data = pd.read_json(path, lines=True, encoding="utf-8", encoding_errors="ignore")
 
-    with open(path, "r", encoding="utf-8", errors="ignore") as f:
-        for line in f:
-            buffer += line.strip()
+    df = pd.DataFrame({
+        "texte": data["text"],
+        "stars": data["stars"]
+    })
 
-            if buffer.endswith("}"):
-                star_match = re.search(r"stars:(\d)", buffer)
-                text_match = re.search(r'"text:""(.*?)"""', buffer)
+    print(f"✓ Données chargées : {len(df)} lignes")
+    print(df["stars"].value_counts().sort_index())
 
-                if star_match and text_match:
-                    stars.append(int(star_match.group(1)))
-                    texts.append(text_match.group(1))
-
-                buffer = ""
-
-    return pd.DataFrame({"text": texts, "stars": stars})
+    return df
 
 
 # =========================
@@ -70,10 +60,10 @@ for etablissement, filepath in FILES.items():
     print(df["stars"].value_counts())
 
     # 2. Nettoyage
-    df["clean_text"] = df["text"].apply(clean_text)
+    df["clean_text"] = df["texte"].apply(clean_text)
 
     # (optionnel) réduire pour aller plus vite
-    # df = df.sample(200000, random_state=42)
+    df = df.sample(200000, random_state=42)
 
     # 3. Split
     X_train, X_test, y_train, y_test = train_test_split(
