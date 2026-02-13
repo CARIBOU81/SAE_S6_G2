@@ -17,7 +17,7 @@ os.makedirs(DOSSIER_SORTIE, exist_ok=True)
 
 # Le fichier toutesLesCateg.txt est dans le même dossier que le script
 DOSSIER_SCRIPT = os.path.dirname(os.path.abspath(__file__))
-FICHIER_CATEGORIES = os.path.join(DOSSIER_SCRIPT, "toutesLesCateg.txt")
+FICHIER_CATEGORIES = os.path.join(DOSSIER_SCRIPT, "../Analyse de données/toutesLesCateg.txt")
 
 # Familles à conserver
 # J'ai garder les 10 familles les plus présentes
