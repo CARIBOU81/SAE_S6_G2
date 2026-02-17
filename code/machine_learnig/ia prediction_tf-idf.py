@@ -16,7 +16,7 @@ load_dotenv()
 
 
 FICHIER_REVIEWS = os.getenv("INPUT_REVIEWS")
-FICHIER_SORTIE = os.getenv("OUTPUT_FILE_prediction") # dossier ou serra les resultats
+FICHIER_SORTIE = os.getenv("OUTPUT_FILE_IA_PREDICTION_TF-IDF") # dossier ou serra les resultats
 
 dossier_data = os.getenv("OUTPUT_FILE3")
 path = Path(dossier_data)
@@ -78,7 +78,7 @@ for etablissement, filepath in FILES.items():
     df["clean_text"] = df["text"].apply(clean_text)
 
     # (optionnel) réduire pour aller plus vite
-    # df = df.sample(200000, random_state=42)
+    df = df.sample(200000, random_state=42)
 
     # 3. Split
     X_train, X_test, y_train, y_test = train_test_split(
