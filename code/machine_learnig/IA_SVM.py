@@ -93,7 +93,7 @@ for etablissement, filepath in FILES.items():
     df["clean_text"] = df["text"].apply(clean_text)
 
     # (optionnel) réduire pour aller plus vite
-    df = df.sample(200000, random_state=42)
+    df = df.sample(1000, random_state=42)
 
     # 3. Split
     X_train, X_test, y_train, y_test = train_test_split(
@@ -106,7 +106,7 @@ for etablissement, filepath in FILES.items():
 
     # 4. TF-IDF (UN par type)
     vectorizer = TfidfVectorizer(
-        max_features=200000,
+        max_features=1000,
         ngram_range=(1, 2),
         stop_words="english"
     )

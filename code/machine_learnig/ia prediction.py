@@ -4,22 +4,33 @@ from sklearn.model_selection import train_test_split
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import classification_report
+from dotenv import load_dotenv
+from pathlib import Path
+import os
 
 
 # =========================
 # CONFIG
 # =========================
+load_dotenv()
 
-FILES = {
-    "tout": "../data/yelp_academic_reviews4students.jsonl",
-    "restaurant": "../data/restaurant.jsonl",
-    "garage": "../data/garage.jsonl",
-    "hotel": "../data/hotel.jsonl",
-    "cafe": "../data/cafe.jsonl",
-    "bar": "../data/bar.jsonl",
-    "shopping": "../data/shopping.jsonl"
-}
 
+FICHIER_REVIEWS = os.getenv("INPUT_REVIEWS")
+FICHIER_SORTIE = os.getenv("OUTPUT_FILE_prediction") # dossier ou serra les resultats
+
+dossier_data = os.getenv("OUTPUT_FILE3")
+path = Path(dossier_data)
+
+
+FILES = {}
+
+if path.exists():
+
+    for file_path in path.glob("*.jsonl"):
+        
+        FILES[file_path.stem] = str(file_path)
+
+print("Fichiers utilisés :", FILES)
 
 # =========================
 # FONCTIONS UTILES
@@ -33,25 +44,19 @@ def clean_text(text):
     return text.strip()
 
 
+import json
+
 def load_dataset(path):
     texts, stars = [], []
-    buffer = ""
 
-    with open(path, "r", encoding="utf-8", errors="ignore") as f:
+    with open(path, "r", encoding="utf-8") as f:
         for line in f:
-            buffer += line.strip()
-
-            if buffer.endswith("}"):
-                star_match = re.search(r"stars:(\d)", buffer)
-                text_match = re.search(r'"text:""(.*?)"""', buffer)
-
-                if star_match and text_match:
-                    stars.append(int(star_match.group(1)))
-                    texts.append(text_match.group(1))
-
-                buffer = ""
+            obj = json.loads(line)
+            texts.append(obj["text"])
+            stars.append(obj["stars"])
 
     return pd.DataFrame({"text": texts, "stars": stars})
+
 
 
 # =========================
@@ -118,7 +123,13 @@ for etablissement, filepath in FILES.items():
         "predicted_stars": y_pred
     })
 
-    output_file = f"predictions_{etablissement}.csv"
+    output_dir = Path(FICHIER_SORTIE)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    # nom du fichier
+    output_file = output_dir / f"predictions_{etablissement}.csv"
+
+    # sauvegarde
     df_pred.to_csv(output_file, index=False)
 
     print(f"Fichier sauvegardé : {output_file}")

@@ -3,6 +3,7 @@ import os
 import re
 import unicodedata
 from dotenv import load_dotenv
+from tqdm import tqdm  # <--- IMPORT AJOUTÉ
 
 # ----------------------------
 # CONFIG
@@ -39,15 +40,34 @@ def clean_merged_file():
     kept = 0
     removed = 0
 
+    # 1. On compte d'abord le nombre total de lignes pour la barre de chargement
+    print("📊 Calcul du nombre de lignes à traiter...")
+    try:
+        with open(FICHIER_ENTREE, "r", encoding="utf-8") as f:
+            # Cette méthode est rapide pour compter les lignes sans charger le fichier
+            total_lines = sum(1 for _ in f)
+    except FileNotFoundError:
+        print(f"❌ Erreur : Le fichier {FICHIER_ENTREE} est introuvable.")
+        return
+
+    print(f"🔄 Début du traitement de {total_lines} lignes...")
+
+    # 2. Traitement avec barre de chargement
     with open(FICHIER_ENTREE, "r", encoding="utf-8") as fin, \
          open(FICHIER_SORTIE, "w", encoding="utf-8") as fout:
 
-        for line in fin:
+        # tqdm enveloppe 'fin' et affiche la progression
+        for line in tqdm(fin, total=total_lines, unit="line", desc="Nettoyage"):
+
             if not line.strip():
                 removed += 1
                 continue
 
-            obj = json.loads(line)
+            try:
+                obj = json.loads(line)
+            except json.JSONDecodeError:
+                removed += 1
+                continue
 
             # Nettoyage des champs texte s'ils existent
             if "text" in obj:
@@ -77,6 +97,7 @@ def clean_merged_file():
             fout.write(json.dumps(obj, ensure_ascii=False) + "\n")
             kept += 1
 
+    print("-" * 40)
     print(f"✔ Lignes conservées : {kept}")
     print(f"✘ Lignes supprimées : {removed}")
     print(f"✅ Fichier nettoyé écrit dans : {FICHIER_SORTIE}")
