@@ -1,6 +1,5 @@
-# BoW.py
+# bow.py
 # Vectorisation Bag-of-Words
-
 from dotenv import load_dotenv
 import os
 import json
@@ -14,13 +13,15 @@ load_dotenv()
 
 INPUT_REVIEWS = os.getenv("INPUT_REVIEWS")
 OUTPUT_DIR = os.getenv("OUTPUT_DIR", "bow_output")
+OUTPUT_BOW = os.getenv("OUTPUT_BOW")  # fichier texte final à créer/écraser
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 print("Fichier reviews :", INPUT_REVIEWS)
 print("Dossier de sortie :", OUTPUT_DIR)
+print("Fichier texte du BoW :", OUTPUT_BOW)
 
-# Paramètre : nombre maximal d'avis
+# Paramètre : nombre maximal d'avis à charger
 MAX_SAMPLES = 250_000
 
 # Chargement des données (limité à MAX_SAMPLES)
@@ -44,56 +45,22 @@ def clean_text(text):
 
 df["clean_text"] = df["text"].apply(clean_text)
 
-# Création des labels de polarité
-def create_label(stars):
-    if stars > 3:
-        return "positive"
-    elif stars < 3:
-        return "negative"
-    else:
-        return "neutral"
-
-df["sentiment"] = df["stars"].apply(create_label)
-
 # Vectorisation Bag-of-Words
-"""
-Paramètres choisis :
-
-- stop_words="english" → suppression mots vides
-- ngram_range=(1,2) → unigrammes + bigrammes
-- max_features=30 000 → contrôle taille vocabulaire
-- min_df=20 → suppression mots trop rares
-"""
-
 vectorizer = CountVectorizer(
-    stop_words="english",
-    ngram_range=(1, 2),
-    max_features=30_000,
-    min_df=20
+    stop_words="english",   # suppression mots vides
+    ngram_range=(1, 2),     # unigrammes + bigrammes
+    max_features=30_000,    # contrôle taille vocabulaire
+    min_df=20               # suppression mots trop rares
 )
 
 X_bow = vectorizer.fit_transform(df["clean_text"])
-y = df["sentiment"]
-
 print("Matrice Bag-of-Words :", X_bow.shape)
 
-# -------------------------------
-# Sauvegarde du vectorizer et des labels
-# -------------------------------
-
+# Sauvegarde du vectorizer
 joblib.dump(vectorizer, os.path.join(OUTPUT_DIR, "bow_vectorizer.pkl"))
+print("Vectorizer sauvegardé.")
 
-df[["sentiment"]].to_csv(
-    os.path.join(OUTPUT_DIR, "labels.csv"),
-    index=False
-)
-
-print("Vectorizer et labels sauvegardés.")
-
-# -------------------------------
 # Analyse exploratoire : mots les plus fréquents
-# -------------------------------
-
 word_freq = X_bow.sum(axis=0).A1
 vocab = vectorizer.get_feature_names_out()
 
@@ -102,10 +69,22 @@ freq_df = pd.DataFrame({
     "frequency": word_freq
 }).sort_values("frequency", ascending=False)
 
+# Sauvegarde CSV classique
 freq_df.to_csv(
     os.path.join(OUTPUT_DIR, "word_frequencies.csv"),
     index=False
 )
 
+# Export du résultat dans le fichier texte défini par OUTPUT_BOW
+# (écrase le fichier s'il existe)
+if OUTPUT_BOW:
+    with open(OUTPUT_BOW, "w", encoding="utf-8") as f:
+        for word, freq in zip(vocab, word_freq):
+            f.write(f"{word}: {freq}\n")
+    print(f"Résultats BoW enregistrés dans {OUTPUT_BOW}")
+else:
+    print("Variable OUTPUT_BOW non définie — aucun fichier texte exporté.")
+
+# Affichage des 15 mots les plus fréquents
 print("\nTop 15 mots les plus fréquents :")
 print(freq_df.head(15))
